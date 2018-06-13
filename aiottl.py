@@ -2,51 +2,60 @@ import asyncio
 import time
 from collections import defaultdict
 from itertools import chain
-from threading import RLock
+from threading import Lock
 
 
 class Aiottl:
     def __init__(self, *, loop, resolution=60):
         self._storage = {}
         self._expire_buckets = defaultdict(set)
-        self._resolution = resolution
-        self._lock = RLock()
+        self._resolution = int(resolution)
+        self._lock = Lock()
 
         self._loop = loop
         self._handle = self._loop.call_later(self._resolution, self._cleanup)
 
     def get(self, key):
-        now = time.monotonic()
         with self._lock:
-            expire, value = self._storage[key]
-            if expire < now:
-                self._storage.pop(key, None)
-                raise KeyError
+            return self._get(key)
+
+    def _get(self, key, now=None):
+        now = self._loop.time() if now is None else now
+        expire, value = self._storage[key]
+        if expire < now:
+            self._storage.pop(key, None)
+            raise KeyError
         return value
 
     def setex(self, key, expire, value):
-        assert expire > 0, 'expire should be positive integer'
+        with self._lock:
+            self._setex(key, expire, value)
 
-        now = time.monotonic()
+    def _setex(self, key, expire, value, now=None):
+        expire = int(expire)
+
+        if expire <= 0:
+            raise ValueError('Expire should be greater than 0')
+
+        now = self._loop.time() if now is None else now
 
         expire_at = now + expire
         bucket_key = int(expire_at // self._resolution)
 
-        with self._lock:
-            if key in self._storage:
-                old_expire, old_value = self._storage[key]
-                old_bucket_key = int(now + old_expire // self._resolution)
-                self._expire_buckets[old_bucket_key].remove(key)
+        if key in self._storage:
+            old_expire, old_value = self._storage[key]
+            old_bucket_key = int(now + old_expire // self._resolution)
+            self._expire_buckets[old_bucket_key].remove(key)
 
-            self._expire_buckets[bucket_key].add(key)
-            self._storage[key] = (expire_at, value)
+        self._expire_buckets[bucket_key].add(key)
+        self._storage[key] = (expire_at, value)
 
     def ttl(self, key):
         stored = self._storage.get(key)
         if stored is None:
             return -2
 
-        now = time.monotonic()
+        now = self._loop.time()
         ttl = stored[0] - now
         if ttl < 0:
             return -2
@@ -55,13 +64,19 @@ class Aiottl:
     
     def expire(self, key, expire):
         with self._lock:
-            self.setex(key, expire, self.get(key))
+            now = self._loop.time()
+
+            value = self._get(key, now=now)
+            self._setex(key, expire, value, now=now)
+
+    def remove(self, key):
+        self._storage.pop(key, None)
 
     def _cleanup(self):
-        now = time.monotonic()
-        current_bucket = int(now // self._resolution)
-
         with self._lock:
+            now = self._loop.time()
+            current_bucket = int(now // self._resolution)
+
             expired = [
                 bucket for bucket in self._expire_buckets.keys()
                 if bucket < current_bucket
@@ -76,5 +91,5 @@ class Aiottl:
         if not self._loop.is_closed:
             self._handle = self._loop.call_later(self._resolution, self._cleanup)
 
-    def close(self):
+    def __del__(self):
         self._handle.cancel()
