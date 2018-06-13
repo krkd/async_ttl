@@ -6,7 +6,10 @@ from threading import Lock
 
 
 class Aiottl:
-    def __init__(self, *, loop, resolution=60):
+    def __init__(self, *, resolution=60, loop=None):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+
         self._storage = {}
         self._expire_buckets = defaultdict(set)
         self._resolution = int(resolution)
