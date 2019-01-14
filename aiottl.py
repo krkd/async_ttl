@@ -1,8 +1,11 @@
 import asyncio
-import time
 from collections import defaultdict
 from itertools import chain
 from threading import Lock
+
+__version__ = '0.0.1'
+
+__all__ = ('Aiottl',)
 
 
 class Aiottl:
@@ -64,7 +67,7 @@ class Aiottl:
             return -2
 
         return ttl
-    
+
     def expire(self, key, expire):
         with self._lock:
             now = self._loop.time()
@@ -85,14 +88,21 @@ class Aiottl:
                 if bucket < current_bucket
             ]
 
-            for key in chain(self._expire_buckets[bucket] for bucket in expired):
+            expired_keys = chain(
+                self._expire_buckets[bucket] for bucket in expired
+            )
+
+            for key in expired_keys:
                 self._storage.pop(key, None)
 
             for bucket in expired:
                 self._expire_buckets.pop(bucket, None)
 
         if not self._loop.is_closed:
-            self._handle = self._loop.call_later(self._resolution, self._cleanup)
+            self._handle = self._loop.call_later(
+                self._resolution,
+                self._cleanup,
+            )
 
     def __del__(self):
         self._handle.cancel()
