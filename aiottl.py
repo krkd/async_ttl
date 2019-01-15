@@ -26,7 +26,9 @@ class Aiottl:
             return self._get(key)
 
     def _get(self, key, now=None):
-        now = self._loop.time() if now is None else now
+        if now is None:
+            now = self._loop.time()
+
         expire, value = self._storage[key]
         if expire < now:
             self._storage.pop(key, None)
@@ -43,7 +45,8 @@ class Aiottl:
         if expire <= 0:
             raise ValueError('Expire should be greater than 0')
 
-        now = self._loop.time() if now is None else now
+        if now is None:
+            now = self._loop.time()
 
         expire_at = now + expire
         bucket_key = int(expire_at // self._resolution)
