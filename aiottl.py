@@ -29,7 +29,7 @@ class Aiottl:
         if now is None:
             now = self._loop.time()
 
-        expire, value = self._storage[key]
+        expire, _, value = self._storage[key]
         if expire < now:
             self._storage.pop(key, None)
             raise KeyError
@@ -52,12 +52,11 @@ class Aiottl:
         bucket_key = int(expire_at // self._resolution)
 
         if key in self._storage:
-            old_expire, old_value = self._storage[key]
-            old_bucket_key = int(now + old_expire // self._resolution)
+            old_expire, old_bucket_key, old_value = self._storage[key]
             self._expire_buckets[old_bucket_key].remove(key)
 
         self._expire_buckets[bucket_key].add(key)
-        self._storage[key] = (expire_at, value)
+        self._storage[key] = (expire_at, bucket_key, value)
 
     def ttl(self, key):
         stored = self._storage.get(key)
