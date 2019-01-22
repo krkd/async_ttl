@@ -2,30 +2,38 @@ import asyncio
 from collections import defaultdict
 from itertools import chain
 from threading import Lock
+from typing import Dict, Generic, Optional, Set, Tuple, TypeVar
 
-__version__ = '0.0.1'
+__version__ = '0.0.3'
 
 __all__ = ('AsyncTTL',)
 
+T = TypeVar('T')
 
-class AsyncTTL:
-    def __init__(self, *, resolution=60, loop=None):
+
+class AsyncTTL(Generic[T]):
+    def __init__(
+        self,
+        *,
+        resolution: int = 60,
+        loop: Optional[asyncio.events.AbstractEventLoop] = None
+    ):
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self._storage = {}
-        self._expire_buckets = defaultdict(set)
+        self._storage: Dict[str, Tuple[float, int, T]] = {}
+        self._expire_buckets: Dict[int, Set[str]] = defaultdict(set)
         self._resolution = int(resolution)
         self._lock = Lock()
 
         self._loop = loop
         self._handle = self._loop.call_later(self._resolution, self._cleanup)
 
-    def get(self, key):
+    def get(self, key: str):
         with self._lock:
             return self._get(key)
 
-    def _get(self, key, now=None):
+    def _get(self, key: str, now: Optional[float] = None) -> T:
         if now is None:
             now = self._loop.time()
 
@@ -35,13 +43,17 @@ class AsyncTTL:
             raise KeyError
         return value
 
-    def setex(self, key, expire, value):
+    def setex(self, key: str, expire: float, value: T):
         with self._lock:
             self._setex(key, expire, value)
 
-    def _setex(self, key, expire, value, now=None):
-        expire = int(expire)
-
+    def _setex(
+        self,
+        key: str,
+        expire: float,
+        value: T,
+        now: Optional[float] = None,
+    ):
         if expire <= 0:
             raise ValueError('Expire should be greater than 0')
 
@@ -58,7 +70,7 @@ class AsyncTTL:
         self._expire_buckets[bucket_key].add(key)
         self._storage[key] = (expire_at, bucket_key, value)
 
-    def ttl(self, key):
+    def ttl(self, key: str) -> float:
         stored = self._storage.get(key)
         if stored is None:
             return -2
@@ -70,14 +82,14 @@ class AsyncTTL:
 
         return ttl
 
-    def expire(self, key, expire):
+    def expire(self, key: str, expire: float):
         with self._lock:
             now = self._loop.time()
 
             value = self._get(key, now=now)
             self._setex(key, expire, value, now=now)
 
-    def remove(self, key):
+    def remove(self, key: str):
         self._storage.pop(key, None)
 
     def _cleanup(self):
