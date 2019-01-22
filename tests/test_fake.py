@@ -1,2 +1,2 @@
 def test_fake():
-    import aiottl  # noqa
+    import async_ttl  # noqa

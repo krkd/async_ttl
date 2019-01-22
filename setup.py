@@ -11,7 +11,7 @@ needs_pytest = 'pytest' in set(sys.argv)
 def get_version():
     regex = r"__version__\s=\s\'(?P<version>[\d\.ab]+?)\'"
 
-    path = ('aiottl.py',)
+    path = ('async_ttl.py',)
 
     return re.search(regex, read(*path)).group('version')
 
@@ -24,17 +24,17 @@ def read(*parts):
 
 
 setup(
-    name='aiottl',
+    name='async_ttl',
     version=get_version(),
     author='Dima Kruk',
     author_email='krkdima@gmail.com',
-    url='https://github.com/krkd/aiottl',
+    url='https://github.com/krkd/async_ttl',
     description='Asyncio in memory cache with ttl',
     long_description=read('README.rst'),
     setup_requires=['pytest-runner'] if needs_pytest else [],
     tests_require=['pytest', 'pytest-asyncio', 'pytest-cov'],
     python_requires='>=3.6.0',
-    py_modules=['aiottl'],
+    py_modules=['async_ttl'],
     include_package_data=True,
     zip_safe=False,
     classifiers=[

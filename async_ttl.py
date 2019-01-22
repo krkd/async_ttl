@@ -5,10 +5,10 @@ from threading import Lock
 
 __version__ = '0.0.1'
 
-__all__ = ('Aiottl',)
+__all__ = ('AsyncTTL',)
 
 
-class Aiottl:
+class AsyncTTL:
     def __init__(self, *, resolution=60, loop=None):
         if loop is None:
             loop = asyncio.get_event_loop()
