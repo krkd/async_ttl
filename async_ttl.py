@@ -4,12 +4,15 @@ from itertools import chain
 from threading import Lock
 from typing import Dict, Generic, Optional, Set, Tuple, TypeVar
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 __all__ = ('AsyncTTL',)
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
+
+
+sentinel = object()
 
 
 class AsyncTTL(Generic[KT, VT]):
@@ -72,8 +75,8 @@ class AsyncTTL(Generic[KT, VT]):
         self._storage[key] = (expire_at, bucket_key, value)
 
     def ttl(self, key: KT) -> float:
-        stored = self._storage.get(key)
-        if stored is None:
+        stored = self._storage.get(key, sentinel)
+        if stored is sentinel:
             return -2
 
         now = self._loop.time()
