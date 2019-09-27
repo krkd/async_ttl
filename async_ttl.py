@@ -2,7 +2,7 @@ import asyncio
 from collections import defaultdict
 from itertools import chain
 from threading import Lock
-from typing import Dict, Generic, Optional, Set, Tuple, TypeVar
+from typing import Dict, Generic, Optional, Set, Tuple, TypeVar, cast
 
 __version__ = '0.0.4'
 
@@ -10,6 +10,7 @@ __all__ = ('AsyncTTL',)
 
 KT = TypeVar('KT')
 VT = TypeVar('VT')
+Storage_VT = Tuple[float, int, VT]
 
 
 sentinel = object()
@@ -25,7 +26,7 @@ class AsyncTTL(Generic[KT, VT]):
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self._storage: Dict[KT, Tuple[float, int, VT]] = {}
+        self._storage: Dict[KT, Storage_VT] = {}
         self._expire_buckets: Dict[int, Set[KT]] = defaultdict(set)
         self._resolution = int(resolution)
         self._lock = Lock()
@@ -78,6 +79,9 @@ class AsyncTTL(Generic[KT, VT]):
         stored = self._storage.get(key, sentinel)
         if stored is sentinel:
             return -2
+
+        # TODO: figure out why type inheritance does not work
+        stored = cast(Storage_VT, stored)
 
         now = self._loop.time()
         ttl = stored[0] - now
