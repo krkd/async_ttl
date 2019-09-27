@@ -31,6 +31,7 @@ setup(
     url='https://github.com/krkd/async_ttl',
     description='Asyncio in memory cache with ttl',
     long_description=read('README.rst'),
+    long_description_content_type='text/x-rst',
     setup_requires=['pytest-runner'] if needs_pytest else [],
     tests_require=['pytest', 'pytest-asyncio', 'pytest-cov'],
     python_requires='>=3.6.0',
